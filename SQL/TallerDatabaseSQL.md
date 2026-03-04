@@ -1,5 +1,6 @@
 > [!IMPORTANT] 
-> # Solución a Taller [Taller Base de Datos SQL]([Http](https://1drv.ms/b/c/73b18dccb0a722be/IQDn4iinEtJ4QrErjpk1_rdUAfoMmDwluicUXhWLjdZHB_k?e=sQeG3P))
+> # Solución a Taller [Taller Base de Datos SQL](https://1drv.ms/b/c/73b18dccb0a722be/IQDn4iinEtJ4QrErjpk1_rdUAfoMmDwluicUXhWLjdZHB_k?e=sQeG3P)
+
 
 # 1. Taller Práctico: Evolución de Modelos Relacionales Mediante DDL
 Asignatura: Bases de Datos
