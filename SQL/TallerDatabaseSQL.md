@@ -841,38 +841,77 @@ CALL sp_get_user_logs(13);
 
 ### 1.​ Diferencia de Lenguaje: ¿En qué se diferencia el comando `DROP` del comando `DELETE`?
 
-RTA: 
+- RTA: `DELETE` elimina los datos osea el contenido de las tablas, mientras que `DROP` puede eliminar tablas, vistas, procedimientos en la base de datos
 
-### 2.​ 
+> [!NOTE]
+> `DELETE`: elimina los datos pero las tablas siguen existiendo
+>
+> `DROP`: elimina todo para siempre
 
-RTA: 
+### 2.​ Integridad Referencial: ¿Qué sucede si intento eliminar un registro en la tabla roles que está siendo referenciado por 5 usuarios en la tabla users?
 
-### 3.​ 
+- RTA: Si se hiciera los usuarios quedarian huerfanos y MySQL lo impide, a esto se le llama Integridad Referencial y garantiza que nunca exista un usuario apuntando a un rol que no existe.
+> [!TIP]
+> Habria una opcion que seria hacer un `Soft Delete`: marcarlo como eliminado pero no eliminarlo fisicamente
+>
+> - El rol sigue existiendo
+> 
+> - Los 5 usuarios siguen apuntando a él
+> 
+> - Nadie puede asignarlo a nuevos usuarios
 
-RTA: 
 
-### 4.​ 
+### 3.​ Transacciones: Explique para qué sirven los comandos COMMIT y ROLLBACK en un procedimiento almacenado.
 
-RTA: 
+- RTA: El `COMMIT` nos confirma todos los cambios y los escribe definitivamente en la BD. Mientras el `ROLLBACK` deshace todos los cambios y la BD vuelve al estado anterior
 
-### 5.​ 
+### 4.​ Optimización: ¿Qué es un índice y en qué escenario penaliza el rendimiento de la base de datos?
 
-RTA: 
+- RTA: Un indice es una estructura de datos separada que MySQL mantiene para acelerar búsquedas, similar al índice de un libro:
+    - no lees todo el libro para encontrar un tema
+    - vas directo a la página
 
-## Parte B: Ingeniería Inversa
+- **El indice penaliza el rendimiento en varias ocasiones:**
+    - Escrituras frecuentes
+    - Tablas pequeñas
+    - Columnas con pocos valores distintos
+    - Exceso de índices
+    - LIKE con comodín al inicio
+
+> [!NOTE]
+> **Escrituras frecuentes:** Cada `INSERT`, `UPDATE`, `DELETE`. 
+> **MySQL** actualiza el dato y además actualiza CADA índice
+>
+> **Tablas pequeñas:** Tabla con 10 registros, MySQL decide leer los 10 directo en vez de consultar el índice y el índice es overhead innecesario
+>
+> **Columnas con pocos valores distintos:** `is_verified → solo 0 o 1` `deleted_at  → solo NULL o fecha` el índice no filtra casi nada y MySQL recorre la mitad de la tabla igual eso es espacio consumido sin beneficio
+>
+> **Exceso de índices:** Tabla con 15 índices, cada índice consume espacio en disco, cada modificación actualiza 15 índices y el optimizador de MySQL se confunde
+>
+> **LIKE con comodín al inicio:** LIKE con % al inicio, al ejecutar el indice se ignora
+
+### 5.​ Normalización: ¿A qué forma normal (1FN, 2FN o 3FN) pertenece la separación de los países de la tabla de perfiles a una tabla independiente? Justifique.
+
+- RTA: Es la forma `3FN` porque *no debe haber dependencias
+transitivas entre columnas* lo que significa que una columna no puede depender
+de otra columna que no sea la PK.
+- `country_name` no depende directamente de `Profile_id`, depende de sí mismo, no del perfil y esto es una dependencia transitiva.
+- Lo correcto seria tener a `country_name` en una tabla separada y comunicarla con `Profile_id`.
+
+## Parte B: Ingeniería Inversa -- PENDIENTE
 
 1.​ Análisis de Estructura: Identifique todas las relaciones existentes indicando:
-○​ Tabla Origen y Tabla Destino.
-○​ Campo Llave Primaria (PK) y Campo Llave Foránea (FK).
-○​ Cardinalidad (1:1, 1:N, N:M).
++ Tabla Origen y Tabla Destino.
++ Campo Llave Primaria (PK) y Campo Llave Foránea (FK).
++ Cardinalidad (1:1, 1:N, N:M).
 
 2.​ Modelo Entidad-Relación (MER): Utilizando una herramienta de modelado (MySQL
 Workbench, Lucidchart, Draw.io o manual), genere el diagrama físico de la base de
 datos.
-○​ Debe incluir atributos, tipos de datos y nombres de las restricciones.
-○​ Resalte visualmente la auto-referencia en la tabla modules.
++ Debe incluir atributos, tipos de datos y nombres de las restricciones.
++ Resalte visualmente la auto-referencia en la tabla modules.
 
 3.​ Diccionario de Datos: Cree una tabla en Word/Excel que describa cada tabla del script,
 el propósito de cada columna y si permite valores nulos.
 
-# 4. Caso de Estudio: Sistema de Gestión de Co-Working "SmartSpace"
+# 4. Caso de Estudio: Sistema de Gestión de Co-Working "SmartSpace" ---PENDIENTE
