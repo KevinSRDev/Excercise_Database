@@ -382,7 +382,6 @@ INSERT INTO modules (Modules_name, Modules_description, Modules_route, Modules_i
 > 
 > En vez de consultar tablas por separado las unes en una sola consulta ✅
 
-### 1. Reporte Maestro de Usuarios:
 
 Analogía simple
 ```
@@ -401,39 +400,29 @@ Juan   │ Ventas
 María  │ Admin
 ```
 
+### 1. Reporte Maestro de Usuarios:
+
 ### Answer 
 
 ```SQL
+USE api_crud_taller;
+
 SELECT
-    u.User_user         AS 'Usuario',
-    u.User_email        AS 'Email',
-    r.Roles_name        AS 'Rol',
-    s.User_status_name  AS 'Estado',
-    c.country_name      AS 'País'
-FROM users u
-JOIN roles r          ON u.Roles_fk       = r.Roles_id
-JOIN status_catalog s ON u.User_status_fk = s.User_status_id
-JOIN profiles p       ON u.User_id        = p.User_id_fk
-JOIN countries c      ON p.country_fk     = c.country_id
-ORDER BY u.User_user ASC;
-```
-
----
-
-## ¿Por qué cada JOIN?
-```
-users  ──JOIN──► roles
-                 para obtener el nombre del rol ✅
-
-users  ──JOIN──► status_catalog
-                 para obtener el nombre del estado ✅
-
-users  ──JOIN──► profiles
-                 para llegar a countries
-                 el país vive en profiles, no en users ✅
-
-profiles ──JOIN──► countries
-                   para obtener el nombre del país ✅
+    users.User_user        AS 'Usuario',
+    users.User_email       AS 'Email',
+    roles.Roles_name       AS 'Rol',
+    status_catalog.User_status_name  AS 'Estado',
+    countries.country_name AS 'País'
+FROM users
+JOIN roles 
+    ON users.Roles_fk = roles.Roles_id
+JOIN status_catalog 
+    ON users.User_status_fk = status_catalog.User_status_id
+JOIN profiles 
+    ON users.User_id = profiles.User_id_fk
+JOIN countries 
+    ON profiles.country_fk = countries.country_id
+ORDER BY users.User_user ASC;
 ```
 
 ---
@@ -449,17 +438,441 @@ dev_laura      │ laura@mail.com     │ Desarrollad │ Pendien │ Venezuela
 ...
 ```
 
+### 2.​ Módulos por Rol
+
+> [!WARNING]
+> ## No se puede hacer el `JOIN` porque la tabla intermedia `role_modules` esta vacia.
+>
+> ### Se tendria que insertar asignaciones
+
+### 3. Auditoría de Accesos:
+
+> [!IMPORTANT]
+> ### Se debe poblar la tabla primero para que devuelva resultados
+
+**Data**
+
+```SQL
+INSERT INTO login_logs (session_id, User_fk, ip_address) VALUES
+(SHA2('session001', 256), 1,  '192.168.1.1'),
+(SHA2('session002', 256), 2,  '192.168.1.2'),
+(SHA2('session003', 256), 3,  '190.210.45.1'),
+(SHA2('session004', 256), 4,  '181.50.30.2'),
+(SHA2('session005', 256), 5,  '200.10.20.3'),
+(SHA2('session006', 256), 6,  '190.85.60.4'),
+(SHA2('session007', 256), 7,  '181.70.40.5'),
+(SHA2('session008', 256), 1,  '192.168.1.1'),
+(SHA2('session009', 256), 3,  '190.210.45.1'),
+(SHA2('session010', 256), 2,  '192.168.1.2'),
+(SHA2('session011', 256), 8,  '200.30.50.6'),
+(SHA2('session012', 256), 9,  '181.90.70.7'),
+(SHA2('session013', 256), 10, '190.100.80.8'),
+(SHA2('session014', 256), 11, '200.50.90.9'),
+(SHA2('session015', 256), 12, '181.110.100.10');
+```
+
+**JOIN**
+```SQL
+SELECT
+    users.User_user         AS 'Usuario',
+    countries.country_name  AS 'País',
+    login_logs.ip_address   AS 'IP',
+    login_logs.created_at   AS 'Fecha acceso'
+FROM login_logs
+JOIN users
+    ON login_logs.User_fk       = users.User_id
+JOIN profiles
+    ON users.User_id            = profiles.User_id_fk
+JOIN countries
+    ON profiles.country_fk      = countries.country_id
+ORDER BY login_logs.created_at DESC
+LIMIT 5;
+```
+
+## Resultado esperado
+```
+Usuario      │ País      │ IP               │ Fecha acceso
+─────────────┼───────────┼──────────────────┼─────────────────────
+mkt_roberto  │ Paraguay  │ 181.110.100.10   │ 2026-03-04 10:35:22
+rrhh_diana   │ Uruguay   │ 200.50.90.9      │ 2026-03-04 10:35:21
+cont_miguel  │ Brasil    │ 190.100.80.8     │ 2026-03-04 10:35:20
+dev_laura    │ Venezuela │ 181.90.70.7      │ 2026-03-04 10:35:19
+analista_pedro│ Ecuador  │ 200.30.50.6      │ 2026-03-04 10:35:18
+```
+
+## Actividad 3: Objetos Programables (Vistas y Procedimientos)
+
+> [!NOTE]
+>
+> Una vista es una consulta guardada en la BD
+> 
+> No almacena datos propios
+> 
+> Cada vez que la consultas ejecuta el SELECT internamente ✅
+
+### Analogia
+```
+Sin vista                      Con vista
+─────────────────              ─────────────────
+Escribes el JOIN completo      SELECT * FROM vw_active_admins
+cada vez que lo necesitas ❌   una sola línea ✅
+```
+
+### 1. Vista de Seguridad:
+
+```SQL
+CREATE VIEW vw_active_admins AS
+SELECT
+    users.User_id,
+    users.User_user         AS 'Usuario',
+    users.User_email        AS 'Email',
+    roles.Roles_name        AS 'Rol',
+    status_catalog.User_status_name  AS 'Estado',
+    users.is_verified       AS 'Verificado',
+    users.created_at        AS 'Fecha registro'
+FROM users
+JOIN roles
+    ON users.Roles_fk = roles.Roles_id
+JOIN status_catalog
+    ON users.User_status_fk = status_catalog.User_status_id
+WHERE roles.Roles_name            = 'Admin'
+AND   status_catalog.User_status_name = 'Activo';
+```
+
+### Como usarla despues 
+```SQL
+-- Así de simple
+SELECT * FROM vw_active_admins;
+
+-- También puedes filtrar sobre ella
+SELECT * FROM vw_active_admins
+WHERE is_verified = 1;
+
+-- O contarlos
+SELECT COUNT(*) AS total_admins 
+FROM vw_active_admins;
+```
+
+### 2.​ Procedimiento de Inserción de Usuario:
+
+> [!NOTE]
+> ### ¿Qué es un Procedimiento Almacenado?
+> 
+> - Un procedimiento almacenado es un bloque de código `SQL` guardado en la `BD`
+>         
+> - Recibe parámetros
+> 
+> - Ejecuta lógica
+> 
+> - Maneja errores
+> 
+> - Se llama con una sola línea ✅
+> 
+> ### ¿Qué es una Transacción?
+>
+> Una transacción agrupa varios `INSERT/UPDATE`
+> 
+> en una sola operación atómica
+> 
+> O todo sale bien → `COMMIT` ✅
+> 
+> O algo falla    → `ROLLBACK` ❌ deshace todo
+
+### Answer
+
+```SQL
+DELIMITER $$
+
+CREATE PROCEDURE sp_register_user_full(
+    -- Datos del usuario
+    IN p_user        VARCHAR(255),
+    IN p_email       VARCHAR(256),
+    IN p_password    VARCHAR(255),
+    IN p_roles_fk    INT UNSIGNED,
+    IN p_status_fk   INT UNSIGNED,
+    -- Datos del perfil
+    IN p_name        VARCHAR(30),
+    IN p_photo       VARCHAR(255),
+    IN p_bio         TEXT,
+    IN p_country_fk  INT UNSIGNED
+)
+BEGIN
+    -- Variables internas
+    DECLARE v_new_user_id INT UNSIGNED;
+    DECLARE v_error       BOOLEAN DEFAULT FALSE;
+
+    -- Capturar cualquier error SQL
+    DECLARE CONTINUE HANDLER FOR SQLEXCEPTION
+        SET v_error = TRUE;
+
+    -- Inicio de transacción
+    START TRANSACTION;
+
+        -- Paso 1: Insertar en users
+        INSERT INTO users (
+            User_user,
+            User_email,
+            User_password,
+            Roles_fk,
+            User_status_fk,
+            is_verified
+        ) VALUES (
+            p_user,
+            p_email,
+            SHA2(p_password, 256),
+            p_roles_fk,
+            p_status_fk,
+            0  -- nace sin verificar
+        );
+
+        -- Guardar el ID del usuario recién insertado
+        SET v_new_user_id = LAST_INSERT_ID();
+
+        -- Paso 2: Insertar en profiles con ese ID
+        INSERT INTO profiles (
+            Profile_name,
+            Profile_photo,
+            profile_bio,
+            User_id_fk,
+            country_fk
+        ) VALUES (
+            p_name,
+            p_photo,
+            p_bio,
+            v_new_user_id,  -- ← ID del usuario recién creado
+            p_country_fk
+        );
+
+    -- Verificar si hubo error
+    IF v_error THEN
+        ROLLBACK;
+        SELECT 'ERROR: No se pudo registrar el usuario.' AS mensaje;
+    ELSE
+        COMMIT;
+        SELECT 
+            v_new_user_id           AS 'ID Usuario creado',
+            p_user                  AS 'Usuario',
+            p_email                 AS 'Email',
+            'Registrado con éxito'  AS 'Mensaje';
+    END IF;
+
+END$$
+
+DELIMITER ;
+```
+
+### ¿Qué hace cada parte?
+
+```SQL
+DELIMITER $$
+        ↓
+Cambia el delimitador de ; a $$
+para que MySQL no confunda los ; internos
+con el fin del procedimiento ✅
+
+DECLARE v_new_user_id
+        ↓
+Variable que guarda el ID del usuario
+recién insertado para usarlo en profiles ✅
+
+DECLARE CONTINUE HANDLER FOR SQLEXCEPTION
+        ↓
+Si ocurre cualquier error SQL
+captura el error y continúa
+para poder hacer ROLLBACK ✅
+
+LAST_INSERT_ID()
+        ↓
+Obtiene el ID AUTO_INCREMENT
+del último INSERT ejecutado ✅
+
+START TRANSACTION → COMMIT o ROLLBACK
+        ↓
+Garantiza que users y profiles
+se insertan juntos o ninguno ✅
+```
+
+### ¿Cómo se llama el procedimiento?
+
+```SQL
+CALL sp_register_user_full(
+    'nuevo_user',        -- User_user
+    'nuevo@mail.com',    -- User_email
+    'password123',       -- User_password (se hashea interno)
+    2,                   -- Roles_fk (Admin)
+    1,                   -- User_status_fk (Activo)
+    'Nuevo Usuario',     -- Profile_name
+    'photos/nuevo.jpg',  -- Profile_photo
+    'Bio del usuario.',  -- profile_bio
+    1                    -- country_fk (Colombia)
+);
+```
+
 ---
 
-## Regla de oro de los JOINs
+### Flujo completo de la transacción
+
 ```
-Por cada FK en las tablas
-necesitas un JOIN
+CALL sp_register_user_full(...)
         ↓
-users tiene 3 FK:
-├── Roles_fk       → JOIN roles          ✅
-├── User_status_fk → JOIN status_catalog ✅
-└── profiles tiene country_fk
-                   → JOIN profiles       ✅
-                   → JOIN countries      ✅
+START TRANSACTION
+        ↓
+INSERT users ──────────────── ✅ ok
+        ↓
+LAST_INSERT_ID() → guarda ID
+        ↓
+INSERT profiles ─────────────¿ok?
+        ↓                         ↓
+      ✅ ok                    ❌ error
+        ↓                         ↓
+    COMMIT                    ROLLBACK
+  todo guardado            todo deshecho
+        ✅                        ✅
 ```
+
+### 3.​ Procedimiento de Reporte de Actividad:
+
+```SQL
+DELIMITER $$
+
+CREATE PROCEDURE sp_get_user_logs(
+    IN p_user_id INT UNSIGNED
+)
+BEGIN
+    -- Verificar si el usuario existe
+    IF NOT EXISTS (
+        SELECT 1 FROM users 
+        WHERE User_id = p_user_id
+    ) THEN
+        SELECT 'ERROR: El usuario no existe.' AS mensaje;
+
+    -- Verificar si tiene logs
+    ELSEIF NOT EXISTS (
+        SELECT 1 FROM login_logs 
+        WHERE User_fk = p_user_id
+    ) THEN
+        SELECT 'El usuario no tiene historial de accesos.' AS mensaje;
+
+    -- Todo ok → devolver historial
+    ELSE
+        SELECT
+            login_logs.log_id           AS 'ID Log',
+            users.User_user             AS 'Usuario',
+            users.User_email            AS 'Email',
+            login_logs.ip_address       AS 'IP',
+            login_logs.session_id       AS 'Sesión',
+            login_logs.created_at       AS 'Fecha acceso'
+        FROM login_logs
+        JOIN users
+            ON login_logs.User_fk = users.User_id
+        WHERE login_logs.User_fk = p_user_id
+        ORDER BY login_logs.created_at DESC;
+
+    END IF;
+
+END$$
+
+DELIMITER ;
+```
+
+### ¿Qué hace cada parte?
+```SQL
+IN p_user_id INT UNSIGNED
+        ↓
+Recibe el ID del usuario
+como parámetro de entrada ✅
+
+IF NOT EXISTS (SELECT 1 FROM users...)
+        ↓
+Verifica que el usuario existe
+antes de buscar sus logs ✅
+SELECT 1 es más eficiente que SELECT *
+solo verifica existencia sin traer datos ✅
+
+ELSEIF NOT EXISTS (SELECT 1 FROM login_logs...)
+        ↓
+Verifica que tiene logs
+antes de intentar mostrarlos ✅
+
+ORDER BY created_at DESC
+        ↓
+Los más recientes primero ✅
+```
+
+---
+
+### ¿Por qué no necesita transacción?
+```SQL
+Transacción → operaciones que escriben datos
+              INSERT, UPDATE, DELETE
+                    ↓
+              Si algo falla hay que deshacer ✅
+
+sp_get_user_logs → solo lee datos (SELECT)
+                   no modifica nada en la BD
+                        ↓
+                   No hay nada que deshacer ✅
+                   No necesita transacción ✅
+```
+
+### ¿Cómo se llama?
+
+```SQL
+-- Ver logs del usuario con ID 1
+CALL sp_get_user_logs(1);
+
+-- Ver logs del usuario con ID 3
+CALL sp_get_user_logs(3);
+
+-- Usuario que no existe
+CALL sp_get_user_logs(999);
+-- Resultado: 'ERROR: El usuario no existe.'
+
+-- Usuario sin logs
+CALL sp_get_user_logs(13);
+-- Resultado: 'El usuario no tiene historial de accesos.'
+```
+
+---
+
+# 3. Taller de Conceptos e Ingeniería Inversa
+
+## Parte A: Conceptos Fundamentales (Cuestionario)
+
+### 1.​ Diferencia de Lenguaje: ¿En qué se diferencia el comando `DROP` del comando `DELETE`?
+
+RTA: 
+
+### 2.​ 
+
+RTA: 
+
+### 3.​ 
+
+RTA: 
+
+### 4.​ 
+
+RTA: 
+
+### 5.​ 
+
+RTA: 
+
+## Parte B: Ingeniería Inversa
+
+1.​ Análisis de Estructura: Identifique todas las relaciones existentes indicando:
+○​ Tabla Origen y Tabla Destino.
+○​ Campo Llave Primaria (PK) y Campo Llave Foránea (FK).
+○​ Cardinalidad (1:1, 1:N, N:M).
+
+2.​ Modelo Entidad-Relación (MER): Utilizando una herramienta de modelado (MySQL
+Workbench, Lucidchart, Draw.io o manual), genere el diagrama físico de la base de
+datos.
+○​ Debe incluir atributos, tipos de datos y nombres de las restricciones.
+○​ Resalte visualmente la auto-referencia en la tabla modules.
+
+3.​ Diccionario de Datos: Cree una tabla en Word/Excel que describa cada tabla del script,
+el propósito de cada columna y si permite valores nulos.
+
+# 4. Caso de Estudio: Sistema de Gestión de Co-Working "SmartSpace"
